@@ -6,7 +6,13 @@
 #include <iostream>
 #include <ctime>
 #include <string>
-
+void rw2group6::Mouse::turn(int dir_offset){
+    if(dir_offset==-1)turn_left();
+    else if(dir_offset==1)turn_right();
+    else if(dir_offset==2){turn_right();turn_right();}
+    else if(dir_offset==0){//do nothing 
+    }
+}
 void rw2group6::Mouse::turn_left(){
     m_curr_dir = rw2group6::Algorithm::calculate_dir(m_curr_dir,-1);
     Simulator::turnLeft();
@@ -16,15 +22,6 @@ void rw2group6::Mouse::turn_right(){
     m_curr_dir = rw2group6::Algorithm::calculate_dir(m_curr_dir,1);
     Simulator::turnRight();
     // std::cerr << m_curr_dir << " mouse turned right\n";
-}
-
-void rw2group6::Mouse::record_curr_loc(){
-    // create an array to store x, y location and the 
-    // number of moves to get to this location
-    std::array<int,3> curr_loc{m_curr_loc_x,m_curr_loc_y,m_moves};
-    // push onto the history stack
-    m_loc_hist.push(curr_loc);
-    // std::cerr << m_loc_hist.size() << std::endl;
 }
 
 void rw2group6::Mouse::move_forward(char color){
@@ -37,8 +34,7 @@ void rw2group6::Mouse::move_forward(char color){
     m_moves++;
     Simulator::moveForward();
     Simulator::setColor(m_curr_loc_x,m_curr_loc_y,color);
-    std::cerr << m_curr_dir << " mouse moved forward\n";
-
+    // std::cerr << m_curr_dir << " mouse moved forward\n";
 }
 
 int rw2group6::Mouse::get_dir(){
@@ -60,7 +56,8 @@ int rw2group6::Cell::is_wall(int dir){
 
 
 void rw2group6::Cell::set_wall(int dir, bool check_result){
-    // set the corresponding direction to 1
+    // set the wall in the corresponding direction according to
+    // check_result
     m_wall.at(dir)=static_cast<int>(check_result);
 }
 void rw2group6::Algorithm::init_maze(){
@@ -130,8 +127,8 @@ void rw2group6::Algorithm::generate_goal(){
 }
 int rw2group6::Algorithm::calculate_dir(int dir,int flr){
     int d_{dir + flr};
-    if(d_<0)d_=3;
-    if(d_>3)d_=0;
+    if(d_<0)d_+=4;
+    if(d_>3)d_-=4;
     return d_;
 }
 void rw2group6::Algorithm::update_first_vist(){
@@ -139,7 +136,6 @@ void rw2group6::Algorithm::update_first_vist(){
     int y{m_mouse.get_y()};
     if(m_first_visit[y][x]==0){ //  not visited
         m_first_visit[y][x] = m_mouse.get_moves();
-        std::cerr << x <<" "<< y << " " << m_mouse.get_moves() <<"\n";
     }
 }
 bool rw2group6::Algorithm::check_wall(int lfr){
@@ -148,9 +144,7 @@ bool rw2group6::Algorithm::check_wall(int lfr){
     int x{m_mouse.get_x()};
     int y{m_mouse.get_y()};
     int d{m_mouse.get_dir()};
-    // parameter flr takes value from 'f','l','r', 
-    // meaning front, left, right
-    // need to convert to 'n','s','w','e'
+    // calculate absolute direction
     int d_{Algorithm::calculate_dir(d,lfr)};
     int check_{m_maze[y][x].is_wall(d_)};
     bool check_result{};
@@ -162,15 +156,14 @@ bool rw2group6::Algorithm::check_wall(int lfr){
     return check_result;
 }
 
-void rw2group6::Algorithm::update_wall_curr_loc(int curr_dir, int x, int y){
-    // this function ensures all relevant wall information for the 
-    // current cell is stored in the local map
-    // look left, front and right
+void rw2group6::Algorithm::detect_wall_lfr(int curr_dir, int x, int y){
+    // this function ensures the wall information for the 
+    // current cell is stored in the local map for the left, 
+    // front and right direction
     std::array<int,3> dirs{-1,0,1}; // left, front, right
-    std::cerr <<"("<<x<<" "<<y<<" )";
     for(int d : dirs){ // go through all 3 directions
         // see if the local map has the information
-        int d_{Algorithm::calculate_dir(curr_dir,d)}; 
+        int d_{calculate_dir(curr_dir,d)}; 
         bool check_result{}; // check if local map has the information
         
         if(m_maze[y][x].is_wall(d_)==-1){ // no data availabe in the local map, query simulator
@@ -192,55 +185,49 @@ void rw2group6::Algorithm::update_wall_curr_loc(int curr_dir, int x, int y){
             if(check_result==1)
                 Simulator::setWall(x,y,int2dir.at(d_));
         }
-        std::cerr << m_maze[y][x].is_wall(d_) << " ";
     }
-    std::cerr <<"\n";
-
 }
-void rw2group6::Algorithm::follow_wall_left(){
+void rw2group6::Algorithm::follow_wall(std::string left_right_follow){
+    int do_move{};
+    char color{'c'}; // the color to fill the path taken
+    int first_dir{}; // the first direction to check changes based on left/right wall following
+    if(left_right_follow=="left")first_dir = -1;
+    else first_dir = 1;
+    // detect left, front and right wall at the (0,0) location
+    detect_wall_lfr(m_mouse.get_dir(),m_mouse.get_x(),m_mouse.get_y());
     while(m_mouse.get_x()!=m_goal_x || m_mouse.get_y()!=m_goal_y){
+        do_move = 1; // flag indicating whether to move to a new location, default is to move
         // store wall information in the local map first
         int dir{m_mouse.get_dir()};
-        update_wall_curr_loc(m_mouse.get_dir(),m_mouse.get_x(),m_mouse.get_y());
+        // update first vist record
         update_first_vist();
-        if(!check_wall(-1)){ // -1 is left
-            m_mouse.turn_left();
-            m_mouse.move_forward('c');
+        if(!check_wall(first_dir)){ 
+            m_mouse.turn(first_dir);
         }else if(!check_wall(0)){ // 0  is front
-            m_mouse.move_forward('c');
-        }else if(!check_wall(1)){  // 1 is right
-            m_mouse.turn_right();
-            m_mouse.move_forward('c');
+            // do nothing
+        }else if(!check_wall(-first_dir)){  // check the opposite direction of first_dir
+            m_mouse.turn(-first_dir);
         }else{
             // turn around
-            m_mouse.turn_right();
-            m_mouse.turn_right();
+            m_mouse.turn(2);
+            do_move = 0;
+        }
+        if(do_move){
+            m_mouse.move_forward(color);
+            // just move to the new location, we can immediately update the 
+            // wall behind us, because there can't be any wall 
+            update_back_wall(false);
+            // at a new location, detect any wall to the left, front and right 
+            // if the information is not in the local map
+            detect_wall_lfr(m_mouse.get_dir(),m_mouse.get_x(),m_mouse.get_y());
         }
     }
     update_first_vist();
 }
 
-void rw2group6::Algorithm::follow_wall_right(){
-    while(m_mouse.get_x()!=m_goal_x || m_mouse.get_y()!=m_goal_y){
-        // store wall information in the local map first
-        int dir{m_mouse.get_dir()};
-        update_wall_curr_loc(m_mouse.get_dir(),m_mouse.get_x(),m_mouse.get_y());
-        update_first_vist();
-        if(!check_wall(1)){ // 1 is right
-            m_mouse.turn_right();
-            m_mouse.move_forward('c');
-        }else if(!check_wall(0)){ // 0  is front
-            m_mouse.move_forward('c');
-        }else if(!check_wall(-1)){  // -1 is left
-            m_mouse.turn_left();
-            m_mouse.move_forward('c');
-        }else{
-            // turn around
-            m_mouse.turn_right();
-            m_mouse.turn_right();
-        }
-    }
-    update_first_vist();
+void rw2group6::Algorithm::update_back_wall(bool is_wall){
+    int dir_offset{2}; // the direction offset for turning around
+    m_maze[m_mouse.get_y()][m_mouse.get_x()].set_wall(calculate_dir(m_mouse.get_dir(),dir_offset),is_wall);
 }
 void rw2group6::Algorithm::return_to_init_loc(){
     // return to (0,0)
@@ -253,26 +240,27 @@ void rw2group6::Algorithm::return_to_init_loc(){
     std::array<int,4> dir_y{1,0,-1,0};
     std::array<int,3> lfr{-1,0,1};
     // first turn around
-    m_mouse.turn_right(); 
-    m_mouse.turn_right();
+    m_mouse.turn(2); 
     char color = 'o';
     Simulator::setColor(x,y,color);
+    int early_visit{};
+    int dir_next{};
     while(x!=0 || y!=0){
-        update_wall_curr_loc(m_mouse.get_dir(),x,y);
-        int early_visit{-1};
-        int dir_next{};
+        early_visit = -1;
         for(int d : lfr){
             if(check_wall(d)==1)continue; // 1 means there is a wall
-            int d_{calculate_dir(m_mouse.get_dir(),d)}; // map to n/e/s/w
+            // calculate direction relative to the current direction of the mouse
+            int d_{calculate_dir(m_mouse.get_dir(),d)}; 
+            // compute x, y coordinate in that direction
             int x_{x+dir_x.at(d_)};
             int y_{y+dir_y.at(d_)};
-            if(x_>=0 && x_<m_maze_width && y_>=0 && y_<m_maze_height){
-                if(y_==0 && x_==0 ){ // initial location found
+            if(x_>=0 && x_<m_maze_width && y_>=0 && y_<m_maze_height){ // if within maze
+                if(y_==0 && x_==0 ){ // if found (0,0), break out of the loop
                     dir_next = d;
                     break;
                 }
                 if(m_first_visit[y_][x_]==0)continue; // not visited
-                if(early_visit==-1){
+                if(early_visit==-1){ // find the earliest visit among all adjacent locations
                     early_visit=m_first_visit[y_][x_];
                     dir_next = d;
                 } else {
@@ -284,17 +272,9 @@ void rw2group6::Algorithm::return_to_init_loc(){
             }
         }
         // now go according to dir_next
-        switch (dir_next)
-        {
-        case -1:
-            m_mouse.turn_left();
-            break;
-        case 0:
-            break;
-        case 1:
-            m_mouse.turn_right();
-        }
+        m_mouse.turn(dir_next);
         m_mouse.move_forward(color);
+        // get the new location
         x = m_mouse.get_x();
         y = m_mouse.get_y();
     }
