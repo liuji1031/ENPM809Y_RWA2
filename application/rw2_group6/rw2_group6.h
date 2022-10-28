@@ -1,9 +1,10 @@
 #ifndef __RW2_GROUP6_H__
 #define __RW2_GROUP6_H__
 #include <utility>
-#include <stack>
 #include <array>
 #include <unordered_map>
+#include <string>
+
 /**
  * @brief 
  * @author 
@@ -16,13 +17,9 @@ class Mouse{
     public:
     /**
      * @brief Construct a new Mouse object with default (0,0)
-     * current location 
+     * current location and north direction (m_curr_dir=0)
      */
-    Mouse(): m_curr_loc_x{0},m_curr_loc_y{0},m_curr_dir{0},m_moves{0}{
-        // push initial position onto the stack
-        std::array<int,3> init_pos{m_curr_loc_x,m_curr_loc_y,m_moves};
-        m_loc_hist.push(init_pos);
-    };
+    Mouse(): m_curr_loc_x{0},m_curr_loc_y{0},m_curr_dir{0},m_moves{0}{};
     /**
      * @brief mouse turns left by 90 deg
      */
@@ -32,15 +29,17 @@ class Mouse{
      */
     void turn_right();
     /**
+     * @brief turn the mouse by certain amount
+     * 
+     * @param dir_offset the amount to turn, -1 for left
+     * 1 for right, 2 for turn around
+     */
+    void turn(int dir_offset);
+    /**
      * @brief mouse moves forward by 1 
      * @param color the color to set for the maze when the mouse moves
      */
     void move_forward(char color);
-    /**
-     * @brief put the current location and the number of moves
-     * in the history stack
-     */
-    void record_curr_loc();
     /**
      * @brief Get the x location of mouse
      * 
@@ -85,16 +84,7 @@ class Mouse{
      * as a int: 'n','e','s','w' correspond to 0,1,2,3 respectively
      */
     int m_curr_dir;
-    /**
-     * @brief m_loc_hist is a stack storing the history
-     * of explored locations in the maze. Each entry is 
-     * a 1 by 3 array, with the first 2 elements being the
-     * x and y coordinate of the explored location in the maze
-     * and the 3rd element stores on which move the mouse arrived
-     * at this location, e.g., arive at (0,1) after move 1 in the 
-     * north direction
-     */
-    std::stack<std::array<int,3>> m_loc_hist; 
+
 }; // class Mouse
 
 class Cell{
@@ -118,40 +108,34 @@ class Cell{
      * 
      * @param dir direction of the wall to be queried
      * @return 0 or 1 if data exists in the map: 1 there is wall, 0 if no wall
-     * @return -1 if data not available in the map, need to query simulator
+     * -1 if data not available in the map, need to query simulator
      */
     int is_wall(int dir);
 
     private:
+    /**
+     * @brief m_wall stores the wall info in that cell
+     * 
+     */
     std::array<int,4> m_wall;
-};
+}; // class Cell
 class Algorithm{
     public:
     /**
      * @brief Construct a new Algorithm object
      */
-    Algorithm(): m_first_visit{0}{
-
-    };
-    /**
-     * @brief initialize the maze, set goal and direct mouse to 
-     * the goal
-     */
-    void run();
+    Algorithm(): m_first_visit{0}{};
     /**
      * @brief initialize the maze, i.e., color outer walls
      */
     void init_maze();
     /**
-     * @brief implements the left-wall-following algorithm for
+     * @brief implements the left/right-wall-following algorithm for
      * the mouse
+     * @param left_right_follow indicates which rule: left/right
      */
-    void follow_wall_left();
-    /**
-     * @brief implements the right-wall-following algorithm for
-     * the mouse
-     */
-    void follow_wall_right();
+    void follow_wall(std::string left_right_follow);
+
     /**
      * @brief generates the goal position in the maze. needs to be
      * along the outer wall, other than (0,0)
@@ -160,40 +144,55 @@ class Algorithm{
     /**
      * @brief check if there is wall in a certain direction
      * 
-     * @param flr the direction to be checked
+     * @param flr the direction to be checked (front/left/right)
      * @return true if there is a wall
      * @return false if there is no wall
      */
     bool check_wall(int flr);
     
     /**
-     * @brief direct the mouse to the initial position
+     * @brief direct the mouse back to the initial position
      */
     void return_to_init_loc();
     /**
-     * @brief check if it is visiting this location for 
-     * the first time
+     * @brief for every new location visited, store the number
+     * of the move to first reach this location in an array
      */
     void update_first_vist();
     
     /**
-     * @brief update the wall status of the current cell and save
+     * @brief detect the wall at left/front/right and store the info
      * in the local map
-     * 
      */
-    void update_wall_curr_loc(int dir,int x, int y);
+    void detect_wall_lfr(int dir,int x, int y);
     
+    /**
+     * @brief update the wall behind the mouse at the current location
+     * in the maze whenever the mouse just moved forward
+     * @param is_wall true for wall, false for no wall
+     */
+    void update_back_wall(bool is_wall);
     /**
      * @brief map from the relative direction (front, left, right)
      * to absolute direction (north, west, south, east) based on the
      * current direction of the mouse
      * @param d current direction of the mouse
-     * @param flr relative direction
-     * @return char absolute direction in terms of the map
+     * @param flr relative direction (front/left.right)
+     * @return absolute direction as an int (0-3, mapped from n/e/s/w)
      */
     static int calculate_dir(int dir, int flr);
 
+    /**
+     * @brief creates a mapping between nesw as chars to 0-3 as int
+     * 
+     * @param dir direction as char ('n','e','s','w')
+     * @return const int direction as int (0,1,2,3)
+     */
     static const int dir2int(char dir);
+    /**
+     * @brief creates a mapping between int (0-3) to char (n/e/s/w)
+     * 
+     */
     static std::string int2dir;
 
     private:
@@ -207,7 +206,7 @@ class Algorithm{
     int static const m_maze_height{16};
     /**
      * @brief m_maze is an array of Cell objects that store the detected
-     * walls
+     * walls. serves as a local map
      */
     std::array<std::array<Cell,m_maze_width>,m_maze_height> m_maze;
     /**
@@ -215,10 +214,9 @@ class Algorithm{
      */
     Mouse m_mouse;
     /**
-     * @brief m_first_visit stores the when a particular location in the 
-     * maze is first visited. The actual value stored is simply the earliest
-     * move to reach this location. E.g., the value of (1,1) being 2 means 
-     * that location (1,1) is first visted on the second move. the array will
+     * @brief m_first_visit stores the number of moves made when a particular 
+     * location in the maze is first visited. E.g., the value of location (1,1) being 2 
+     * means that location (1,1) is first visted on the second move. the array will
      * be used to find the return path once the goal location is reached.
      */
     std::array<std::array<int,m_maze_width>,m_maze_height> m_first_visit;
@@ -229,15 +227,8 @@ class Algorithm{
     /**
      * @brief y coordinate of the goal location
      */
-    int m_goal_y;
-    /**
-     * @brief create a mapping between direction ("nesw")
-     * and 0-3
-     */
-
-    
-
-};
+    int m_goal_y; 
+}; // class Algorithm
 
 } // namespace rw2group6
 #endif
