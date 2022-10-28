@@ -1,34 +1,16 @@
-#include <iostream>
-#include <string>
+#include "simulator\simulator.h"
+#include "rw2_group6\rw2_group6.h"
+#include <memory>
 
-#include "simulator/simulator.h"
+main(){
+    auto solver = std::make_unique<rw2group6::Algorithm>();
+    // initialize
+    solver->init_maze();
+    solver->generate_goal();    
 
-int main(int argc, char *argv[])
-{
-    // colorize and add text
-    Simulator::setColor(0, 0, 'G');
-    Simulator::setText(0, 0, "A");
-    Simulator::setColor(0, 15, 'G');
-    Simulator::setText(0, 15, "B");
-    Simulator::setColor(15, 15, 'G');
-    Simulator::setText(15, 15, "C");
-    Simulator::setColor(15, 0, 'G');
-    Simulator::setText(15, 0, "D");
+    // get mouse to goal location
+    solver->follow_wall("right");
 
-    // setting some walls
-    Simulator::setWall(7, 0, 's');
-    Simulator::setWall(8, 0, 's');
-
-    // move the robot back and forth
-    while (true)
-    {
-        Simulator::moveForward();
-        if (Simulator::wallFront())
-        {
-            std::cerr << "--- turn left ---" << std::endl;
-            Simulator::turnLeft();
-            std::cerr << "--- turn left ---" << std::endl;
-            Simulator::turnLeft();
-        }
-    }
+    // go back to initial location
+    solver->return_to_init_loc();
 }
