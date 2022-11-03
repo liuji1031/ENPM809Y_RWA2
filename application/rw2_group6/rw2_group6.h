@@ -191,7 +191,6 @@ class Algorithm{
     static const int dir2int(char dir);
     /**
      * @brief creates a mapping between int (0-3) to char (n/e/s/w)
-     * 
      */
     static std::string int2dir;
 
