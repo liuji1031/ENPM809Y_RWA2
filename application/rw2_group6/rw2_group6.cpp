@@ -229,11 +229,14 @@ void rw2group6::Algorithm::update_back_wall(bool is_wall){
     int dir_offset{2}; // the direction offset for turning around
     m_maze[m_mouse.get_y()][m_mouse.get_x()].set_wall(calculate_dir(m_mouse.get_dir(),dir_offset),is_wall);
 }
+
 void rw2group6::Algorithm::return_to_init_loc(){
     // return to (0,0)
     // for each current location, look through the 4 connected locations
     // among the 4 locations, find the one that's visted before and has the
     // earliest visit and also reachable 
+    // first clear all color
+    Simulator::clearAllColor();
     int x{m_mouse.get_x()};
     int y{m_mouse.get_y()};
     std::array<int,4> dir_x{0,1,0,-1};
@@ -260,7 +263,7 @@ void rw2group6::Algorithm::return_to_init_loc(){
                     break;
                 }
                 if(m_first_visit[y_][x_]==0)continue; // not visited
-                if(early_visit==-1){ // find the earliest visit among all adjacent locations
+                if(early_visit==-1){ // find the earliest visit among all adjacent and reachable locations
                     early_visit=m_first_visit[y_][x_];
                     dir_next = d;
                 } else {
