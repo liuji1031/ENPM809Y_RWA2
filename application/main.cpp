@@ -2,7 +2,7 @@
 #include "rw2_group6\rw2_group6.h"
 #include <memory>
 
-main(){
+int main(){
     auto solver = std::make_unique<rw2group6::Algorithm>();
     // initialize
     solver->init_maze();
