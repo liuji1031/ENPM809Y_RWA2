@@ -1,0 +1,20 @@
+/*! \mainpage Introduction
+ *
+ * The right/left wall following algorithm:
+ *
+ * The mouse is at position (0,0). Before the mouse navigates the maze, store the information of the current cell of walls in the local map. Then the mouse checks the current walls to determine where is the next cell to go. The sequence of checking the wall is determined by the right or left wall following. If it is the left wall following, the mouse checking sequence is left->front->right. If all of them are wall, then turn around.
+ * Repeat the above steps until the mouse arrives at the goal.
+ *
+ * The algorithm for the micro mouse to return to the initial location implements the following:
+ *  1. When first performing left/right wall following in the maze, the micro mouse records the earliest first visit to a given location by storing the number of moves after which the location was first visited in a 2D array the same size of the maze.
+ *  2. When returning to the initial position, the micro mouse scans among the 4 adjacent connected locations in the maze and determines which location is both reachable (no wall in between) and has the earliest first visit. The micro mouse then moves towards that location and repeats this process until arriving at the initial location.
+ *
+ * Build the application:
+ *
+ * g++ -std=c++17 -g main.cpp simulator/simulator.cpp rw2_group6/rw2_group6.cpp -o main
+ *
+ * To switch between left-hand rule approach and right-hand rule approach:
+ *
+ * Set the argument to the function follow_wall to "left" for left wall following or "right" for right wall following in main.cpp (Line 12)
+ *
+ */
